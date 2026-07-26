@@ -17,8 +17,8 @@
 面板标题示例：
 
 ```text
-MESL | 07-26 21:43
-Cherry Network | 07-26 21:43
+订阅链接1 | 07-26 21:43
+订阅链接2 | 07-26 21:43
 ```
 
 ## 文件
@@ -50,13 +50,13 @@ https://raw.githubusercontent.com/Eightean/Surge/main/Sub-info.js
 正确示例：
 
 ```ini
-argument=title=MESL&reset_day=11&icon=externaldrive.fill.badge.icloud&color=#007aff&url=https://example.com/get?token=123&type=surge
+argument=title=订阅链接1&reset_day=11&icon=externaldrive.fill.badge.icloud&color=#007aff&url=https://example.com/get?token=123&type=surge
 ```
 
 错误示例：
 
 ```ini
-argument=url=https://example.com/get?token=123&type=surge&title=MESL
+argument=url=https://example.com/get?token=123&type=surge&title=订阅链接1
 ```
 
 ## 完整双订阅模块示例
@@ -74,8 +74,8 @@ argument=url=https://example.com/get?token=123&type=surge&title=MESL
 # 订阅地址不需要进行 URL Encode。
 # 必须将 &url=订阅地址放在 argument 的最后。
 #
-# 订阅链接1：MESL
-# 订阅链接2：Cherry Network
+# 第一个面板标题：订阅链接1
+# 第二个面板标题：订阅链接2
 
 [Panel]
 
@@ -84,9 +84,9 @@ argument=url=https://example.com/get?token=123&type=surge&title=MESL
 
 [Script]
 
-订阅链接1 = type=generic,timeout=10,script-path=https://raw.githubusercontent.com/Eightean/Surge/main/Sub-info.js,script-update-interval=86400,argument=title=MESL&reset_day=11&icon=externaldrive.fill.badge.icloud&color=#007aff&url=订阅地址1
+订阅链接1 = type=generic,timeout=10,script-path=https://raw.githubusercontent.com/Eightean/Surge/main/Sub-info.js,script-update-interval=86400,argument=title=订阅链接1&reset_day=11&icon=externaldrive.fill.badge.icloud&color=#007aff&url=订阅地址1
 
-订阅链接2 = type=generic,timeout=10,script-path=https://raw.githubusercontent.com/Eightean/Surge/main/Sub-info.js,script-update-interval=86400,argument=title=Cherry Network&reset_day=99&expire=1970-01-01&icon=externaldrive.fill.badge.icloud&color=#007aff&url=订阅地址2
+订阅链接2 = type=generic,timeout=10,script-path=https://raw.githubusercontent.com/Eightean/Surge/main/Sub-info.js,script-update-interval=86400,argument=title=订阅链接2&reset_day=99&expire=1970-01-01&icon=externaldrive.fill.badge.icloud&color=#007aff&url=订阅地址2
 ```
 
 ## 参数说明
@@ -110,7 +110,7 @@ argument=url=https://example.com/get?token=123&type=surge&title=MESL
 订阅链接1 = script-name=订阅链接1
 
 [Script]
-订阅链接1 = type=generic,...,argument=title=MESL&url=订阅地址
+订阅链接1 = type=generic,...,argument=title=订阅链接1&url=订阅地址
 ```
 
 信息面板实际显示的是 `title=` 后面的内容，而不是内部标识。
