@@ -5,6 +5,7 @@
  * 原更新日期：2022.08.24
  * 原版本：1.5
  * 自定义修改：面板标题增加 MM-DD 日期
+ * 自定义修改：支持将未编码的订阅地址放在 argument 最后
  */
 
 let args = getArgs();
@@ -46,12 +47,28 @@ let args = getArgs();
 })();
 
 function getArgs() {
-  return Object.fromEntries(
-    $argument
+  const urlMarker = "&url=";
+  const urlIndex = $argument.indexOf(urlMarker);
+  const paramsText =
+    urlIndex === -1 ? $argument : $argument.slice(0, urlIndex);
+
+  const result = Object.fromEntries(
+    paramsText
       .split("&")
-      .map((item) => item.split("="))
-      .map(([k, v]) => [k, decodeURIComponent(v)])
+      .filter(Boolean)
+      .map((item) => {
+        const separatorIndex = item.indexOf("=");
+        const key = item.slice(0, separatorIndex);
+        const value = item.slice(separatorIndex + 1);
+        return [key, decodeURIComponent(value)];
+      })
   );
+
+  if (urlIndex !== -1) {
+    result.url = $argument.slice(urlIndex + urlMarker.length);
+  }
+
+  return result;
 }
 
 function getUserInfo(url) {
