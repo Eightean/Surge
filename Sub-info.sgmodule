@@ -1,19 +1,16 @@
 #!name=机场流量信息
-#!desc=显示订阅流量、套餐到期日期及更新时间；订阅链接在 Surge 本地参数中填写。
+#!desc=显示一至两个订阅的流量、到期日期及更新时间；未使用的链接保留 -，不查询、不显示。
 #!system=ios
-#!arguments=title_1:订阅链接 1,url_1,title_2:订阅链接 2,url_2
-#!arguments-desc=title_1：订阅 1 的显示名称；url_1：订阅 1 的完整链接；title_2：订阅 2 的显示名称；url_2：订阅 2 的完整链接。链接直接粘贴，无需 URL Encode，不加引号；名称请勿包含 &、逗号或换行，如需特殊字符请先 URL Encode。参数保存在 Surge 本地，请勿分享含私人链接的截图。
+#!arguments=title_1:订阅链接 1,url_1:-,title_2:订阅链接 2,url_2:-
+#!arguments-desc=title_1/2：自定义名称，保留 - 时使用默认名称。url_1/2：完整订阅链接，无需编码；不用的链接保留 -。只填一个就只显示一份，两份显示在同一面板。名称和链接中不要包含英文逗号或换行；名称不要包含 &。参数仅在本地填写，勿分享含私人链接的截图。
 
-# 使用方法：通过 Install New Module 安装本文件的 raw 链接，填写两个参数后启用。
-# 本模块只引用现有 Sub-info.js，不包含任何私人订阅地址。
-# 保留原模块的图标、颜色、刷新周期、重置日期及到期参数。
-# &url=订阅地址必须位于 argument 最后，以保留订阅地址中的 & 参数。
-# 第二个面板沿用原配置 reset_day=99 与 expire=1970-01-01；名称和链接参数不会调整这些套餐显示设置。
+# 两个订阅共用一个面板，跳过未配置的订阅，不依赖未公开的隐藏面板接口。
+# 如参数界面不允许清空，请保留 -，脚本将其视为未填写。
+# 到期日期只采用订阅响应头，不预设套餐日期或流量重置日。
+# 请更新模块后重新填写参数，旧 Sub-info.js 保留不变。
 
 [Panel]
-订阅链接1 = script-name=订阅链接1,update-interval=86400
-订阅链接2 = script-name=订阅链接2,update-interval=86400
+机场流量信息 = script-name=机场流量信息,update-interval=86400
 
 [Script]
-订阅链接1 = type=generic,timeout=10,script-path=https://raw.githubusercontent.com/Eightean/Surge/main/Sub-info.js,script-update-interval=86400,argument=title={{{title_1}}}&reset_day=11&icon=externaldrive.fill.badge.icloud&color=#007aff&url={{{url_1}}}
-订阅链接2 = type=generic,timeout=10,script-path=https://raw.githubusercontent.com/Eightean/Surge/main/Sub-info.js,script-update-interval=86400,argument=title={{{title_2}}}&reset_day=99&expire=1970-01-01&icon=externaldrive.fill.badge.icloud&color=#007aff&url={{{url_2}}}
+机场流量信息 = type=generic,timeout=10,script-path=https://raw.githubusercontent.com/Eightean/Surge/main/Sub-info-optional.js,script-update-interval=86400,argument="title_1={{{title_1}}}&url_1={{{url_1}}}&title_2={{{title_2}}}&url_2={{{url_2}}}"
