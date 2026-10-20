@@ -28,9 +28,16 @@ if (!/^https?:\/\/\S+$/i.test(args.url)) {
     });
     if (![info.upload,info.download,info.total].every(n => Number.isFinite(n) && n >= 0)) return finish('订阅返回的流量信息无效。');
     const lines = [`用量：${bytes(info.upload+info.download)} | ${bytes(info.total)}`];
-    if (Number.isFinite(info.expire) && info.expire > 0) {
+    if (!Object.prototype.hasOwnProperty.call(info, 'expire')) {
+      lines.push('到期：未提供');
+    } else if (info.expire === 0) {
+      // Empty expire= and expire=0 are treated as no time limit.
+      lines.push('到期：长期有效');
+    } else if (Number.isFinite(info.expire) && info.expire > 0) {
       const d = new Date(info.expire*1000);
-      if (!Number.isNaN(d.getTime())) lines.push(`到期：${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`);
+      lines.push(Number.isNaN(d.getTime()) ? '到期：未知' : `到期：${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`);
+    } else {
+      lines.push('到期：未知');
     }
     finish(lines.join('\n'));
   });
