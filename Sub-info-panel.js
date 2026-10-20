@@ -33,7 +33,7 @@ if (!/^https?:\/\/\S+$/i.test(args.url)) {
     if (resetValue === '长期' || resetValue === '长期有效') {
       lines.push('重置时间：长期有效');
     } else if (resetLeft !== null) {
-      lines.push(resetLeft === 0 ? '重置：今天' : `重置：剩余${resetLeft}天`);
+      lines.push(`重置时间：剩余${resetLeft}天`);
     }
     if (!Object.prototype.hasOwnProperty.call(info, 'expire')) {
       lines.push('到期：未提供');
@@ -65,7 +65,7 @@ function remainingResetDays(value, today) {
   const ordinal = (y, m, d) => Date.UTC(y, m, d) / 86400000;
   const clamped = (y, m) => Math.min(day, new Date(y, m + 1, 0).getDate());
   let y = year, m = month, d = clamped(y, m);
-  if (today.getDate() > d) {
+  if (today.getDate() >= d) {
     m += 1;
     if (m === 12) { m = 0; y += 1; }
     d = clamped(y, m);
