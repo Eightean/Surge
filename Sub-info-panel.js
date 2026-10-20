@@ -36,15 +36,15 @@ if (!/^https?:\/\/\S+$/i.test(args.url)) {
       lines.push(`重置时间：剩余${resetLeft}天`);
     }
     if (!Object.prototype.hasOwnProperty.call(info, 'expire')) {
-      lines.push('到期：未提供');
+      lines.push('到期时间：未提供');
     } else if (info.expire === 0) {
       // Empty expire= and expire=0 are treated as no time limit.
-      lines.push('到期：长期有效');
+      lines.push('到期时间：长期有效');
     } else if (Number.isFinite(info.expire) && info.expire > 0) {
       const d = new Date(info.expire*1000);
-      lines.push(Number.isNaN(d.getTime()) ? '到期：未知' : `到期：${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`);
+      lines.push(Number.isNaN(d.getTime()) ? '到期时间：未知' : `到期时间：${d.getFullYear()} 年 ${pad(d.getMonth()+1)} 月 ${pad(d.getDate())} 日`);
     } else {
-      lines.push('到期：未知');
+      lines.push('到期时间：未知');
     }
     finish(lines.join('\n'));
   });
