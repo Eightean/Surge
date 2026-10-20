@@ -1,0 +1,19 @@
+#!name=机场流量信息
+#!desc=显示订阅流量、套餐到期日期及更新时间；订阅链接在 Surge 本地参数中填写。
+#!system=ios
+#!arguments=mesl_url,cherry_url
+#!arguments-desc=mesl_url：填写 MESL 的完整订阅链接；cherry_url：填写 Cherry Network 的完整订阅链接。无需 URL Encode，不要加引号。链接仅填写在 Surge 参数界面，不要提交到公开仓库或分享含参数的截图。
+
+# 使用方法：通过 Install New Module 安装本文件的 raw 链接，填写两个参数后启用。
+# 本模块只引用现有 Sub-info.js，不包含任何私人订阅地址。
+# 保留原模块的图标、颜色、刷新周期、重置日期及到期参数。
+# &url=订阅地址必须位于 argument 最后，以保留订阅地址中的 & 参数。
+# Cherry 原配置的 reset_day=99 与 expire=1970-01-01 原样保留，未修改套餐含义。
+
+[Panel]
+订阅链接1 = script-name=订阅链接1,update-interval=86400
+订阅链接2 = script-name=订阅链接2,update-interval=86400
+
+[Script]
+订阅链接1 = type=generic,timeout=10,script-path=https://raw.githubusercontent.com/Eightean/Surge/main/Sub-info.js,script-update-interval=86400,argument=title=MESL&reset_day=11&icon=externaldrive.fill.badge.icloud&color=#007aff&url={{{mesl_url}}}
+订阅链接2 = type=generic,timeout=10,script-path=https://raw.githubusercontent.com/Eightean/Surge/main/Sub-info.js,script-update-interval=86400,argument=title=Cherry Network&reset_day=99&expire=1970-01-01&icon=externaldrive.fill.badge.icloud&color=#007aff&url={{{cherry_url}}}
