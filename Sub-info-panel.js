@@ -12,7 +12,29 @@ const name = args.title && args.title !== '-' ? args.title : '订阅链接';
 const pad = n => String(n).padStart(2, '0');
 const now = new Date();
 const title = `${name} | ${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
-const finish = content => $done({title, content, icon:'externaldrive.fill.badge.icloud', 'icon-color':'#007aff'});
+// Separate saved results by subscription and display name; never mix providers.
+const cacheKey = 'subscription-panel:last-success:v1:' + encodeURIComponent(JSON.stringify([name, args.url]));
+const finish = (content, successful = false) => {
+  const panel = {title, content, icon:'externaldrive.fill.badge.icloud', 'icon-color':'#007aff'};
+  if (typeof $persistentStore !== 'undefined') {
+    try {
+      if (successful) {
+        $persistentStore.write(JSON.stringify(panel), cacheKey);
+      } else {
+        const saved = $persistentStore.read(cacheKey);
+        const previous = saved ? JSON.parse(saved) : null;
+        if (previous && typeof previous.title === 'string' && typeof previous.content === 'string') {
+          // Preserve the successful timestamp too; a failed request is not an update.
+          $done(previous);
+          return;
+        }
+      }
+    } catch (_) {
+      // Storage failure must not prevent rendering or expose private URLs.
+    }
+  }
+  $done(panel);
+};
 if (!/^https?:\/\/\S+$/i.test(args.url)) {
   finish('未配置有效订阅链接，请检查模块参数。');
 } else {
@@ -46,7 +68,7 @@ if (!/^https?:\/\/\S+$/i.test(args.url)) {
     } else {
       lines.push('到期时间：未知');
     }
-    finish(lines.join('\n'));
+    finish(lines.join('\n'), true);
   });
 }
 function bytes(n) {
