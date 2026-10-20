@@ -28,6 +28,8 @@ if (!/^https?:\/\/\S+$/i.test(args.url)) {
     });
     if (![info.upload,info.download,info.total].every(n => Number.isFinite(n) && n >= 0)) return finish('订阅返回的流量信息无效。');
     const lines = [`用量：${bytes(info.upload+info.download)} | ${bytes(info.total)}`];
+    const resetLeft = remainingResetDays(args.reset_day, now);
+    if (resetLeft !== null) lines.push(resetLeft === 0 ? '重置：今天' : `重置：剩余${resetLeft}天`);
     if (!Object.prototype.hasOwnProperty.call(info, 'expire')) {
       lines.push('到期：未提供');
     } else if (info.expire === 0) {
@@ -47,4 +49,21 @@ function bytes(n) {
   const units = ['B','KB','MB','GB','TB','PB','EB'];
   const i = Math.min(Math.floor(Math.log(n)/Math.log(1024)),units.length-1);
   return (n/Math.pow(1024,i)).toFixed(2)+' '+units[i];
+}
+
+// Calendar-day countdown. A reset day beyond this month's length uses its last day.
+function remainingResetDays(value, today) {
+  if (!/^\d{1,2}$/.test(String(value || ''))) return null;
+  const day = Number(value);
+  if (day < 1 || day > 31) return null;
+  const year = today.getFullYear(), month = today.getMonth();
+  const ordinal = (y, m, d) => Date.UTC(y, m, d) / 86400000;
+  const clamped = (y, m) => Math.min(day, new Date(y, m + 1, 0).getDate());
+  let y = year, m = month, d = clamped(y, m);
+  if (today.getDate() > d) {
+    m += 1;
+    if (m === 12) { m = 0; y += 1; }
+    d = clamped(y, m);
+  }
+  return ordinal(y, m, d) - ordinal(year, month, today.getDate());
 }
