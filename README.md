@@ -1,139 +1,121 @@
 # Surge 订阅流量信息面板
 
-这是一个适用于 Surge 的订阅流量信息面板脚本，用于显示订阅的流量使用情况、流量重置日期、套餐到期日期以及面板更新时间。
+适用于 **Surge iOS 5.11.0 及更新版本**的远程模块。最多配置 **5 个订阅**，每个订阅使用一个独立信息面板；未使用的位置不启用面板。
 
-本项目基于 [mieqq](https://github.com/mieqq/mieqq) 的原始脚本和 [Rabbit-Spec/Surge](https://github.com/Rabbit-Spec/Surge) 的修改版本进行调整。
+## 安装
 
-## 功能
-
-- 显示已使用流量和总流量
-- 显示距离流量重置日的剩余天数
-- 显示订阅套餐到期日期
-- 在面板标题中显示最后更新时间
-- 支持自定义面板标题、图标和图标颜色
-- 支持直接填写未经过 URL Encode 的订阅地址
-- 兼容旧版经过 URL Encode 的参数格式
-
-面板标题示例：
+在 Surge 中进入 **Modules（模块）→ Install New Module…（安装新模块）**，粘贴：
 
 ```text
-订阅链接1 | 07-26 21:43
-订阅链接2 | 07-26 21:43
+https://raw.githubusercontent.com/Eightean/Surge/main/Sub-info.sgmodule
 ```
 
-## 文件
+安装后打开模块的 **Edit Arguments（编辑参数）**，填写名称、链接和可选的重置日，然后启用模块。
 
-### `Sub-info.js`
+> 从旧的本地模块迁移时，请先保存好自己的参数。确认远程模块正常后，停用旧模块，避免重复面板。不要直接将 `.js` 脚本地址作为模块安装地址。
 
-负责请求订阅地址、读取响应头中的 `subscription-userinfo`，并生成 Surge 信息面板内容。
+## 参数填写
 
-脚本 Raw 地址：
+每个订阅都有以下三项，共五组：
+
+| 参数 | 填写方法 |
+| --- | --- |
+| 订阅 1 名称 | 自定义面板标题，例如「我的机场」；也可保留默认名称 |
+| 订阅 1 链接 | 粘贴机场提供的原始完整订阅链接，无需 URL Encode、不加引号 |
+| 订阅 1 重置日 | 可选：填每月 `1–31`、`长期`、`长期有效`，或保留 `-` |
+
+「订阅 2」至「订阅 5」的填写方式相同。
+
+- **只用一个订阅**：只填写一组，其他链接保留 `-`，只启用一个面板。
+- **使用多个订阅**：填写对应的组，每组一个独立面板，最多五个；不要求连续填写。
+- **不用的位置**：链接保留 `-`，无需删除默认名称。
+- **格式限制**：名称与链接不要包含英文逗号、英文单引号、英文双引号或换行；名称不要包含 `&`。
+
+## 面板内容
+
+显示已用流量、总流量、可选的重置倒计时、到期信息，以及标题中的更新时间。
+
+以下仅为显示格式示例，并非真实订阅数据：
 
 ```text
-https://raw.githubusercontent.com/Eightean/Surge/main/Sub-info.js
+我的机场 | 10-21 12:30
+用量：12.34 GB | 50.00 GB
+重置时间：剩余21天
+到期：2026年12月31日
 ```
 
-## 相对原版的修改
+### 重置时间
 
-1. 在面板标题中增加 `MM-DD HH:mm` 格式的更新时间。
-2. 支持直接使用未经 URL Encode 的订阅地址。
-3. 保留对旧版 URL Encode 参数格式的兼容。
-4. 将 `sizes` 声明为函数内局部变量，避免创建全局变量。
+重置日由用户手动填写，**不从套餐到期日推算**。
 
-## 免 URL Encode 的使用规则
+| 重置日填写内容 | 面板显示 |
+| --- | --- |
+| `1–31`，例如 `9` 或 `09` | `重置时间：剩余N天` |
+| `长期` 或 `长期有效` | `重置时间：长期有效` |
+| `-` | 不显示重置信息 |
 
-订阅地址不再需要进行 URL Encode，但必须满足以下要求：
+- 重置当天视为本次已经重置，直接计算到下个月重置日的剩余天数，不显示「今天」或零天。
+- 按实际日历计算，不固定为 30 或 31 天。
+- 当月不存在所填日期时，按该月最后一天计算，例如 2 月的 `31` 按 2 月末计算。
+- 这是按手动日期计算的日历倒计时，不能确认机场是否已实际完成重置，也不精确到重置时刻。
 
-- `url=` 必须是 `argument` 中的最后一个参数。
-- 订阅地址后面不能继续添加其他模块参数。
+### 到期时间
 
-正确示例：
+读取订阅响应头 `subscription-userinfo` 中的 `expire` 字段：
 
-```ini
-argument=title=订阅链接1&reset_day=11&icon=externaldrive.fill.badge.icloud&color=#007aff&url=https://example.com/get?token=123&type=surge
-```
+| 返回内容 | 面板显示 |
+| --- | --- |
+| 有效的正数时间戳 | 具体到期日期 |
+| `expire=` 为空或 `expire=0` | `到期：长期有效` |
+| 完全未提供 `expire` 字段 | `到期：未提供` |
+| 无效或无法解析的到期值 | `到期：未知` |
 
-错误示例：
+> 空值或零按无到期限制处理，但不同机场的约定可能不同，请以机场实际套餐说明为准。「长期有效」不代表流量无限，也不保证服务永久运营。
 
-```ini
-argument=url=https://example.com/get?token=123&type=surge&title=订阅链接1
-```
+## 更新与旧脚本缓存
 
-## 完整双订阅模块示例
+**模块、远程 JS 脚本、面板显示结果是三个独立的更新环节。**
 
-将 `订阅地址1` 和 `订阅地址2` 替换成对应的原始订阅链接即可。
+1. 在模块列表更新「机场流量信息」。
+2. 若仍显示旧内容，进入 Surge 的**外部资源（External Resources）**，更新 `Sub-info-panel.js`；实际地址可能附有 `?v=…` 版本号。
+3. 返回信息面板，点击刷新按钮重新查询。
 
-```ini
-#!name=机场流量信息
-#!desc=显示订阅流量、套餐到期日期及更新时间
-#!system=ios
+本模块的面板更新间隔和脚本更新间隔均为 `86400` 秒。自动检查的触发时机由 Surge 决定，并非后台定时持续执行。点击面板刷新会重新运行脚本，但不代表一定强制重新下载 JS。
 
-# 更新日期：2026.07.26
-# 版本：3.4
-#
-# 订阅地址不需要进行 URL Encode。
-# 必须将 &url=订阅地址放在 argument 的最后。
-#
-# 第一个面板标题：订阅链接1
-# 第二个面板标题：订阅链接2
+模块引用的 JS 地址已添加版本号，方便旧设备在更新模块后使用新的资源地址下载脚本。无需为此卸载重装 Surge，也不需要清理 DNS 缓存。
 
-[Panel]
+如果名称、链接等参数名未变，更新通常无需重新填写；从更早的英文参数版本迁移或移除重装模块时，请核对参数是否仍被保留。
 
-订阅链接1 = script-name=订阅链接1,update-interval=86400
-订阅链接2 = script-name=订阅链接2,update-interval=86400
+## 🔒 隐私与安全
 
-[Script]
+**本模块不会把订阅链接上传到 GitHub 或额外的收集服务器。**
 
-订阅链接1 = type=generic,timeout=10,script-path=https://raw.githubusercontent.com/Eightean/Surge/main/Sub-info.js,script-update-interval=86400,argument=title=订阅链接1&reset_day=11&icon=externaldrive.fill.badge.icloud&color=#007aff&url=订阅地址1
+- 链接由 Surge 保存在本地；查询流量时，脚本会向您填写的机场订阅地址发送请求。
+- 本仓库的模块模板不包含私人订阅链接；请只在 Surge 参数界面填写自己的链接。
+- Surge 自身的 iCloud 同步、配置导出或系统备份不受本模块控制，不能承诺链接「仅留在本机」。
+- 订阅链接通常相当于访问凭证。请勿公开含链接的参数截图、配置或备份，也不要把真实链接提交到公开仓库。
+- 如果链接已经泄露，请到机场后台重置订阅链接。
 
-订阅链接2 = type=generic,timeout=10,script-path=https://raw.githubusercontent.com/Eightean/Surge/main/Sub-info.js,script-update-interval=86400,argument=title=订阅链接2&reset_day=99&expire=1970-01-01&icon=externaldrive.fill.badge.icloud&color=#007aff&url=订阅地址2
-```
+## 文件说明
 
-## 参数说明
+| 文件 | 用途 |
+| --- | --- |
+| [`Sub-info.sgmodule`](Sub-info.sgmodule) | 推荐安装入口；五组中文参数与条件面板配置 |
+| [`Sub-info-panel.js`](Sub-info-panel.js) | 当前独立面板脚本，处理流量、到期及重置时间 |
+| [`Sub-info.js`](Sub-info.js) | 保留的旧版单订阅脚本，旧配置可继续引用 |
+| [`Sub-info-optional.js`](Sub-info-optional.js) | 保留的早期合并面板脚本，当前模块不再引用 |
 
-| 参数 | 是否必需 | 说明 |
-| --- | --- | --- |
-| `url` | 是 | 订阅地址。使用原始地址时必须放在 `argument` 最后 |
-| `title` | 建议填写 | 信息面板显示的标题 |
-| `reset_day` | 否 | 每月流量重置日期，例如 `11` |
-| `expire` | 否 | 手动指定到期日期，格式为 `yyyy-MM-dd`；设置为 `false` 时不显示 |
-| `icon` | 否 | 有效的 SF Symbol 名称 |
-| `color` | 否 | 图标颜色，例如 `#007aff` |
-| `method` | 否 | 请求方法，默认使用 `head` |
+当前模块的图标固定为 SF Symbol `externaldrive.fill.badge.icloud`，颜色为 `#007aff`；未在参数表中开放自定义。旧 `Sub-info.js` 的 `icon`、`color` 等参数属于旧版接口，不应与当前模块参数混用。
 
-## 内部标识与显示标题
+## 适用限制
 
-以下配置中的 `订阅链接1` 只是 Surge 内部标识：
-
-```ini
-[Panel]
-订阅链接1 = script-name=订阅链接1
-
-[Script]
-订阅链接1 = type=generic,...,argument=title=订阅链接1&url=订阅地址
-```
-
-信息面板实际显示的是 `title=` 后面的内容，而不是内部标识。
-
-## 更新频率
-
-示例模块使用：
-
-```ini
-update-interval=86400
-script-update-interval=86400
-```
-
-表示面板数据和远程脚本每天自动检查一次。点击 Surge 面板右侧的刷新按钮可以立即更新。
-
-## 注意事项
-
-- 订阅地址通常包含访问令牌，请勿提交到公开仓库或分享给他人。
-- 本仓库的示例配置不包含真实订阅地址。
-- 面板依赖订阅服务器返回 `subscription-userinfo` 响应头；如果服务商不提供该响应头，脚本无法读取流量信息。
-- 使用未经编码的订阅地址时，请始终将 `url=` 放在参数列表最后。
+- 机场需要返回 `subscription-userinfo` 响应头，脚本才能读取流量。当前面板脚本使用 HEAD 请求；未提供相应数据的订阅可能无法显示。
+- 填入有效格式但无法访问的链接时，会显示错误信息；不会把它当成未配置的位置隐藏。
+- 模块仅声明支持 iOS。不同版本的 Surge 界面名称可能略有差异。
 
 ## 致谢
+
+本项目由原始订阅流量面板方案逐步调整而来，感谢：
 
 - [mieqq/mieqq](https://github.com/mieqq/mieqq)
 - [Rabbit-Spec/Surge](https://github.com/Rabbit-Spec/Surge)
