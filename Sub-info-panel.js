@@ -28,8 +28,13 @@ if (!/^https?:\/\/\S+$/i.test(args.url)) {
     });
     if (![info.upload,info.download,info.total].every(n => Number.isFinite(n) && n >= 0)) return finish('订阅返回的流量信息无效。');
     const lines = [`用量：${bytes(info.upload+info.download)} | ${bytes(info.total)}`];
-    const resetLeft = remainingResetDays(args.reset_day, now);
-    if (resetLeft !== null) lines.push(resetLeft === 0 ? '重置：今天' : `重置：剩余${resetLeft}天`);
+    const resetValue = String(args.reset_day || '').trim();
+    const resetLeft = remainingResetDays(resetValue, now);
+    if (resetValue === '长期' || resetValue === '长期有效') {
+      lines.push('重置时间：长期有效');
+    } else if (resetLeft !== null) {
+      lines.push(resetLeft === 0 ? '重置：今天' : `重置：剩余${resetLeft}天`);
+    }
     if (!Object.prototype.hasOwnProperty.call(info, 'expire')) {
       lines.push('到期：未提供');
     } else if (info.expire === 0) {
