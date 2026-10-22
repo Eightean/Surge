@@ -126,7 +126,7 @@ https://raw.githubusercontent.com/Eightean/Surge/main/Sub-info.sgmodule
 | [Sub-info.sgmodule](Sub-info.sgmodule) | 当前模块的安装入口，包含五组订阅参数及面板配置 |
 | [Sub-info-panel.js](Sub-info-panel.js) | 当前模块使用的独立面板脚本 |
 
-仓库中的 `Sub-info.js` 和 `Sub-info-optional.js` 是保留的旧版脚本，当前模块不引用它们。安装和使用请以本页说明为准，无需手动修改脚本。
+`Sub-info.js` 是兼容旧配置的单订阅脚本，现已同步支持重置倒计时、长期有效、两位月份/日期及失败保留上次结果；仍支持旧参数 `title`、`icon`、`color`、`method` 和 `expire`（日期或时间戳；`false` 隐藏到期行）。原始订阅链接应放在 `&url=` 后、参数末尾；旧版完整 URL Encode 链接也可使用。当前模块继续使用 `Sub-info-panel.js`，无需改动模块配置。`Sub-info-optional.js` 是保留的早期合并面板脚本，当前模块不引用。
 
 ## 致谢
 

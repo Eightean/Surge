@@ -1,148 +1,112 @@
-/*
- * 由 @mieqq 编写
- * 原脚本地址：https://raw.githubusercontent.com/mieqq/mieqq/master/sub_info_panel.js
- * 由 @Rabbit-Spec 修改
- * 原更新日期：2022.08.24
- * 原版本：1.5
- * 自定义修改：面板标题增加 MM-DD 日期
- * 自定义修改：支持将未编码的订阅地址放在 argument 最后
+/* Subscription information panel. Based on mieqq and Rabbit-Spec's original scripts.
+ * Updated with next-reset countdown, padded expiry dates and last-success fallback.
+ * Legacy title/icon/color/method/expire arguments remain supported.
+ * Raw URL must be last; legacy fully URL-encoded URLs may appear anywhere.
  */
-
-let args = getArgs();
-
-(async () => {
-  let info = await getDataInfo(args.url);
-  if (!info) $done();
-  let resetDayLeft = getRmainingDays(parseInt(args["reset_day"]));
-
-  let used = info.download + info.upload;
-  let total = info.total;
-  let expire = args.expire || info.expire;
-  let content = [`用量：${bytesToSize(used)} | ${bytesToSize(total)}`];
-
-  if (resetDayLeft) {
-    content.push(`重置：剩余${resetDayLeft}天`);
+const argument = String($argument || '');
+const args = {};
+const decode = value => { try { return decodeURIComponent(value); } catch (_) { return value; } };
+const rawUrl = /(?:^|&)url=(https?:\/\/)/i.exec(argument);
+const settings = rawUrl ? argument.slice(0, rawUrl.index) : argument;
+settings.split('&').forEach(part => {
+  const i = part.indexOf('=');
+  if (i >= 0) args[part.slice(0, i)] = decode(part.slice(i + 1));
+});
+if (rawUrl) args.url = argument.slice(rawUrl.index + (argument[rawUrl.index] === '&' ? 5 : 4));
+args.url = String(args.url || '').trim();
+const name = args.title && args.title !== '-' ? args.title : '订阅链接';
+const pad = n => String(n).padStart(2, '0');
+const now = new Date();
+const title = `${name} | ${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+// Separate saved results by subscription and display name; never mix providers.
+const cacheKey = 'subscription-panel:last-success:v1:' + encodeURIComponent(JSON.stringify([name, args.url]));
+const finish = (content, successful = false) => {
+  const panel = {title, content, icon:args.icon || 'airplane.circle', 'icon-color':args.color || '#007aff'};
+  if (typeof $persistentStore !== 'undefined') {
+    try {
+      if (successful) {
+        $persistentStore.write(JSON.stringify(panel), cacheKey);
+      } else {
+        const saved = $persistentStore.read(cacheKey);
+        const previous = saved ? JSON.parse(saved) : null;
+        if (previous && typeof previous.title === 'string' && typeof previous.content === 'string') {
+          // Preserve the successful timestamp too; a failed request is not an update.
+          $done(previous);
+          return;
+        }
+      }
+    } catch (_) {
+      // Storage failure must not prevent rendering or expose private URLs.
+    }
   }
-  if (expire && expire !== "false") {
-    if (/^[\d.]+$/.test(expire)) expire *= 1000;
-    content.push(`到期：${formatTime(expire)}`);
-  }
-
-  let now = new Date();
-  let month = now.getMonth() + 1;
-  let day = now.getDate();
-  let hour = now.getHours();
-  let minutes = now.getMinutes();
-  month = month > 9 ? month : "0" + month;
-  day = day > 9 ? day : "0" + day;
-  hour = hour > 9 ? hour : "0" + hour;
-  minutes = minutes > 9 ? minutes : "0" + minutes;
-
-  $done({
-    title: `${args.title} | ${month}-${day} ${hour}:${minutes}`,
-    content: content.join("\n"),
-    icon: args.icon || "airplane.circle",
-    "icon-color": args.color || "#007aff",
+  $done(panel);
+};
+if (!/^https?:\/\/\S+$/i.test(args.url)) {
+  finish('未配置有效订阅链接，请检查模块参数。');
+} else {
+  const method = String(args.method || 'head').toLowerCase();
+  if (typeof $httpClient[method] !== 'function') {
+    finish('获取失败：不支持的请求方法。');
+  } else $httpClient[method]({url:args.url,headers:{'User-Agent':'Quantumult%20X'}}, (error, response) => {
+    if (error || !response || response.status !== 200) return finish('获取失败：请检查网络和订阅链接。');
+    const headers = response.headers || {};
+    const key = Object.keys(headers).find(k => k.toLowerCase() === 'subscription-userinfo');
+    if (!key) return finish('订阅未提供流量信息。');
+    const info = {};
+    String(headers[key]).split(';').forEach(part => {
+      const pair = part.trim().split('=');
+      if (pair.length === 2) info[pair[0]] = Number(pair[1]);
+    });
+    if (![info.upload,info.download,info.total].every(n => Number.isFinite(n) && n >= 0)) return finish('订阅返回的流量信息无效。');
+    const lines = [`用量：${bytes(info.upload+info.download)} | ${bytes(info.total)}`];
+    const resetValue = String(args.reset_day || '').trim();
+    const resetLeft = remainingResetDays(resetValue, now);
+    if (resetValue === '长期' || resetValue === '长期有效') {
+      lines.push('重置时间：长期有效');
+    } else if (resetLeft !== null) {
+      lines.push(`重置时间：剩余${resetLeft}天`);
+    }
+    if (args.expire === 'false') {
+      // Explicit legacy opt-out: hide expiry.
+    } else if (args.expire) {
+      const override = args.expire.trim();
+      const d = /^\d{4}-\d{2}-\d{2}$/.test(override)
+        ? new Date(override + 'T00:00:00') : new Date(Number(override) * 1000);
+      lines.push(Number.isNaN(d.getTime()) ? '到期时间：未知' : `到期时间：${d.getFullYear()} 年 ${pad(d.getMonth()+1)} 月 ${pad(d.getDate())} 日`);
+    } else if (!Object.prototype.hasOwnProperty.call(info, 'expire')) {
+      lines.push('到期时间：未提供');
+    } else if (info.expire === 0) {
+      // Empty expire= and expire=0 are treated as no time limit.
+      lines.push('到期时间：长期有效');
+    } else if (Number.isFinite(info.expire) && info.expire > 0) {
+      const d = new Date(info.expire*1000);
+      lines.push(Number.isNaN(d.getTime()) ? '到期时间：未知' : `到期时间：${d.getFullYear()} 年 ${pad(d.getMonth()+1)} 月 ${pad(d.getDate())} 日`);
+    } else {
+      lines.push('到期时间：未知');
+    }
+    finish(lines.join('\n'), true);
   });
-})();
+}
+function bytes(n) {
+  if (n === 0) return '0B';
+  const units = ['B','KB','MB','GB','TB','PB','EB'];
+  const i = Math.min(Math.floor(Math.log(n)/Math.log(1024)),units.length-1);
+  return (n/Math.pow(1024,i)).toFixed(2)+' '+units[i];
+}
 
-function getArgs() {
-  const urlMarker = "&url=";
-  const urlIndex = $argument.indexOf(urlMarker);
-  const paramsText =
-    urlIndex === -1 ? $argument : $argument.slice(0, urlIndex);
-
-  const result = Object.fromEntries(
-    paramsText
-      .split("&")
-      .filter(Boolean)
-      .map((item) => {
-        const separatorIndex = item.indexOf("=");
-        const key = item.slice(0, separatorIndex);
-        const value = item.slice(separatorIndex + 1);
-        return [key, decodeURIComponent(value)];
-      })
-  );
-
-  if (urlIndex !== -1) {
-    result.url = $argument.slice(urlIndex + urlMarker.length);
+// Calendar-day countdown. A reset day beyond this month's length uses its last day.
+function remainingResetDays(value, today) {
+  if (!/^\d{1,2}$/.test(String(value || ''))) return null;
+  const day = Number(value);
+  if (day < 1 || day > 31) return null;
+  const year = today.getFullYear(), month = today.getMonth();
+  const ordinal = (y, m, d) => Date.UTC(y, m, d) / 86400000;
+  const clamped = (y, m) => Math.min(day, new Date(y, m + 1, 0).getDate());
+  let y = year, m = month, d = clamped(y, m);
+  if (today.getDate() >= d) {
+    m += 1;
+    if (m === 12) { m = 0; y += 1; }
+    d = clamped(y, m);
   }
-
-  return result;
-}
-
-function getUserInfo(url) {
-  let method = args.method || "head";
-  let request = { headers: { "User-Agent": "Quantumult%20X" }, url };
-  return new Promise((resolve, reject) =>
-    $httpClient[method](request, (err, resp) => {
-      if (err != null) {
-        reject(err);
-        return;
-      }
-      if (resp.status !== 200) {
-        reject(resp.status);
-        return;
-      }
-      let header = Object.keys(resp.headers).find(
-        (key) => key.toLowerCase() === "subscription-userinfo"
-      );
-      if (header) {
-        resolve(resp.headers[header]);
-        return;
-      }
-      reject("链接响应头不带有流量信息");
-    })
-  );
-}
-
-async function getDataInfo(url) {
-  const [err, data] = await getUserInfo(url)
-    .then((data) => [null, data])
-    .catch((err) => [err, null]);
-  if (err) {
-    console.log(err);
-    return;
-  }
-
-  return Object.fromEntries(
-    data
-      .match(/\w+=[\d.eE+-]+/g)
-      .map((item) => item.split("="))
-      .map(([k, v]) => [k, Number(v)])
-  );
-}
-
-function getRmainingDays(resetDay) {
-  if (!resetDay) return;
-
-  let now = new Date();
-  let today = now.getDate();
-  let month = now.getMonth();
-  let year = now.getFullYear();
-  let daysInMonth;
-
-  if (resetDay > today) {
-    daysInMonth = 0;
-  } else {
-    daysInMonth = new Date(year, month + 1, 0).getDate();
-  }
-
-  return daysInMonth - today + resetDay;
-}
-
-function bytesToSize(bytes) {
-  if (bytes === 0) return "0B";
-  let k = 1024;
-  let sizes = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
-  let i = Math.floor(Math.log(bytes) / Math.log(k));
-  return (bytes / Math.pow(k, i)).toFixed(2) + " " + sizes[i];
-}
-
-function formatTime(time) {
-  let dateObj = new Date(time);
-  let year = dateObj.getFullYear();
-  let month = dateObj.getMonth() + 1;
-  let day = dateObj.getDate();
-  return year + "年" + month + "月" + day + "日";
+  return ordinal(y, m, d) - ordinal(year, month, today.getDate());
 }
